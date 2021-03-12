@@ -11,13 +11,13 @@ import { Initializable } from "./dependencies/openzepellin/Initializable.sol";
 import { DataTypes } from "./interfaces/DataTypes.sol";
 
 contract PersonalFundManager is Initializable {
-	uint256 interestRateMode;
+	uint16 interestRateMode;
 
 	// AAVE Integration
 	uint16 REFERRAL_CODE = 0;
 	ILendingPoolAddressesProvider public ADDRESSES_PROVIDER;
 
-	function initialize(ILendingPoolAddressesProvider _addressesProvider, uint256 _interestRateMode) public initializer {
+	function initialize(ILendingPoolAddressesProvider _addressesProvider, uint16 _interestRateMode) public initializer {
 		ADDRESSES_PROVIDER = _addressesProvider;
 		interestRateMode = _interestRateMode;
 	}
@@ -39,15 +39,12 @@ contract PersonalFundManager is Initializable {
 		lendingPool.withdraw(_asset, _amount, address(this));
 	}
 
-	struct ReserveData {
-		address aTokenAddress;
-	}
-
 	function repay(address _asset, uint256 _amount) public {
-		ILendingPool lendingPool = ILendingPool(ADDRESSES_PROVIDER.getLendingPool());
+		address lendingPoolAddress = ADDRESSES_PROVIDER.getLendingPool();
+		ILendingPool lendingPool = ILendingPool(lendingPoolAddress);
 		DataTypes.ReserveData memory reserve = lendingPool.getReserveData(_asset);
-		IERC20(reserve.aTokenAddress).approve(ADDRESSES_PROVIDER.getLendingPool(), _amount);
-		IERC20(_asset).approve(ADDRESSES_PROVIDER.getLendingPool(), _amount);
+		IERC20(reserve.aTokenAddress).approve(lendingPoolAddress, _amount);
+		IERC20(_asset).approve(lendingPoolAddress, _amount);
 		lendingPool.repay(_asset, _amount, interestRateMode, address(this));
 	}
 }
