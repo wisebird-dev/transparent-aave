@@ -1,15 +1,14 @@
 import { ethers } from "hardhat";
 import { Signer, BigNumber as EthersBigNumber, Contract, utils, constants } from "ethers";
 import chai, { expect } from 'chai'
+import { toChecksumAddress } from "web3-utils";
 
-import { EthereumAddress } from '../types'
+import { EthereumAddress, InterestRateMode } from '../types'
+import { LENDING_POOL_ADDRESS_PROVIDER_ADDRESS } from "../constants";
 
 chai.use(require('chai-bignumber')());
 
 const test = it
-
-const IMPLEMENTATION_LABEL = 'eip1967.proxy.implementation';
-const ADMIN_LABEL = 'eip1967.proxy.admin';
 
 describe("PersonalFundManagerProxified tests", function () {
     let accounts: Signer[];
@@ -44,7 +43,7 @@ describe("PersonalFundManagerProxified tests", function () {
 
     beforeEach(async () => {
         // deploy proxy
-        const initializeData = Buffer.from('')
+        const initializeData = implementationInstance.interface.encodeFunctionData("initialize", [LENDING_POOL_ADDRESS_PROVIDER_ADDRESS, InterestRateMode.Variable])
         const proxyFactory = await ethers.getContractFactory("TransparentUpgradeableProxy", adminAccount)
         proxyInstance = await proxyFactory.deploy(
             implementationInstance.address,
@@ -54,8 +53,11 @@ describe("PersonalFundManagerProxified tests", function () {
         await proxyInstance.deployTransaction.wait()
     });
 
-    test('implementation is initialized', () => {
+    test('implementation is initialized', async () => {
+        const proxyInstanceWithImplementationABI = implementationInstance.attach(proxyInstance.address)
+        const addressProviderFromImplementation = await proxyInstanceWithImplementationABI.ADDRESSES_PROVIDER()
 
+        expect(toChecksumAddress(addressProviderFromImplementation)).to.equal(toChecksumAddress(LENDING_POOL_ADDRESS_PROVIDER_ADDRESS))
     })
 
     test('admin user can NOT call implementation functions', async () => {

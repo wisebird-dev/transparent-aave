@@ -23,7 +23,8 @@
     "compile": "hardhat compile --show-stack-traces",
     "test": "hardhat test",
     "test:proxyAdmin": "hardhat test test/ProxyAdmin.test.ts",
-    "test:fundManager": "hardhat test test/PersonalFundManager.test.ts"
+    "test:fundManager": "hardhat test test/PersonalFundManager.test.ts",
+    "test:fundManagerProxy": "hardhat test test/PersonalFundManagerProxified.test.ts"
   },
   "dependencies": {
     "@aave/protocol-v2": "^1.0.1",

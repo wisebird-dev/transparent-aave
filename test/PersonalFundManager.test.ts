@@ -2,32 +2,17 @@ import { ethers } from "hardhat";
 import { Signer, BigNumber as EthersBigNumber, Contract, utils, constants } from "ethers";
 import chai, { expect } from 'chai'
 import { BigNumber } from "bignumber.js";
+import { toChecksumAddress } from "web3-utils";
 
 import ProtocolDataProviderArtifact from '@aave/protocol-v2/artifacts/contracts/misc/AaveProtocolDataProvider.sol/AaveProtocolDataProvider.json'
 import LendingPoolAddressProviderArtifact from '@aave/protocol-v2/artifacts/contracts/interfaces/ILendingPoolAddressesProvider.sol/ILendingPoolAddressesProvider.json'
 import LendingPoolArtifact from '@aave/protocol-v2/artifacts/contracts/interfaces/ILendingPool.sol/ILendingPool.json'
 
-import { DAI, ETHEREUM_ADDRESS_LENGTH } from '../constants'
+import { AAVE_DATA_PROVIDER_ADDRESS, DAI, ETHEREUM_ADDRESS_LENGTH, LENDING_POOL_ADDRESS_PROVIDER_ADDRESS } from '../constants'
 import { getDAI, DAI_ADDRESS, ERC20ABI, DAI_DECIMALS } from './utils'
-import { EthereumAddress } from "../types";
-import { toChecksumAddress } from "web3-utils";
+import { EthereumAddress, InterestRateMode } from "../types";
 
 chai.use(require('chai-bignumber')());
-
-// https://docs.aave.com/developers/getting-started/deployed-contracts
-const LENDING_POOL_ADDRESS_PROVIDER_ADDRESS = "0xb53c1a33016b2dc2ff3653530bff1848a515c8c5"
-const AAVE_DATA_PROVIDER_ADDRESS = "0x057835Ad21a177dbdd3090bB1CAE03EaCF78Fc6d"
-
-enum InterestRateMode {
-    Stable = 1,
-    Variable = 2
-}
-
-enum SupportedAssets {
-    DAI = "",
-    USDC = "",
-    USDT = ""
-}
 
 const test = it
 
