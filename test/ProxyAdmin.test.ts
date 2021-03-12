@@ -12,8 +12,6 @@ const IMPLEMENTATION_LABEL = 'eip1967.proxy.implementation';
 const ADMIN_LABEL = 'eip1967.proxy.admin';
 
 describe("ProxyAdmin tests", function () {
-    this.timeout(200000)
-
     let accounts: Signer[];
     let userAccount: Signer
     let userAddress: EthereumAddress
