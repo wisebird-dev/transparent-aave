@@ -2,9 +2,11 @@ import { ethers } from "hardhat";
 import { Signer, BigNumber as EthersBigNumber, Contract, utils, constants } from "ethers";
 import chai, { expect } from 'chai'
 import { toChecksumAddress } from "web3-utils";
+import { BigNumber } from "bignumber.js";
 
 import { EthereumAddress, InterestRateMode } from '../types'
 import { LENDING_POOL_ADDRESS_PROVIDER_ADDRESS } from "../constants";
+import { DAI_ADDRESS, DAI_DECIMALS, ERC20ABI, getAaveProtocolDataProvider, getDAI } from "./utils";
 
 chai.use(require('chai-bignumber')());
 
@@ -19,6 +21,8 @@ describe("PersonalFundManagerProxified tests", function () {
     let proxyAdminInstance: Contract
     let proxyInstance: Contract
     let implementationInstance: Contract
+    let daiInstanceForUser: Contract
+    let protocolDataProvider: Contract
 
     before(async () => {
         accounts = await ethers.getSigners();
@@ -39,6 +43,12 @@ describe("PersonalFundManagerProxified tests", function () {
         const implementationFactory = await ethers.getContractFactory("PersonalFundManager");
         implementationInstance = await implementationFactory.deploy()
         await implementationInstance.deployTransaction.wait()
+
+        // get DAI
+        await getDAI(userAccount)
+        await getDAI(adminAccount)
+
+        protocolDataProvider = getAaveProtocolDataProvider(userAccount)
     })
 
     beforeEach(async () => {
@@ -51,6 +61,14 @@ describe("PersonalFundManagerProxified tests", function () {
             initializeData
         )
         await proxyInstance.deployTransaction.wait()
+
+        // approvals
+        daiInstanceForUser = new ethers.Contract(DAI_ADDRESS, ERC20ABI, userAccount);
+        const approvalForUserReceipt = await daiInstanceForUser.approve(proxyInstance.address, constants.MaxUint256)
+        await approvalForUserReceipt.wait()
+
+        const approvalForAdminReceipt = await daiInstanceForUser.connect(adminAccount).approve(proxyInstance.address, constants.MaxUint256)
+        await approvalForAdminReceipt.wait()
     });
 
     test('implementation is initialized', async () => {
@@ -60,19 +78,24 @@ describe("PersonalFundManagerProxified tests", function () {
         expect(toChecksumAddress(addressProviderFromImplementation)).to.equal(toChecksumAddress(LENDING_POOL_ADDRESS_PROVIDER_ADDRESS))
     })
 
-    test('admin user can NOT call implementation functions', async () => {
+    test('user can deposit', async () => {
+        const proxyInstanceWithImplementationABI = implementationInstance.attach(proxyInstance.address).connect(userAccount)
+        const daiBalanceBefore: EthersBigNumber = await daiInstanceForUser.balanceOf(userAddress)
+        const amountToDeposit = 1000;
+        const amountToDepositUsingAssetDecimals = utils.parseUnits(amountToDeposit.toString(), DAI_DECIMALS)
 
-    })
+        const receipt = await proxyInstanceWithImplementationABI.deposit(DAI_ADDRESS, amountToDepositUsingAssetDecimals)
+        await receipt.wait()
 
-    test('admin user can call admin functions', async () => {
+        expect(receipt).to.be.an('object')
 
-    })
+        const daiBalanceAfterFromContract: EthersBigNumber = await daiInstanceForUser.balanceOf(userAddress)
+        const balanceAfterDepositCalculated = new BigNumber(daiBalanceBefore.toString()).minus(new BigNumber(amountToDepositUsingAssetDecimals.toString()))
 
-    test('user (NOT ADMIN) can NOT call admin functions', async () => {
+        expect(balanceAfterDepositCalculated).to.be.bignumber.equal(new BigNumber(daiBalanceAfterFromContract.toString()))
 
-    })
+        const userReserveData = await protocolDataProvider.getUserReserveData(DAI_ADDRESS, proxyInstance.address);
 
-    test('user (NOT ADMIN) can call implementation functions', async () => {
-
+        expect(new BigNumber(userReserveData.currentATokenBalance.toString())).to.be.bignumber.greaterThan(new BigNumber(1))
     })
 })

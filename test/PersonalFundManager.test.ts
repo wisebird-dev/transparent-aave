@@ -4,29 +4,14 @@ import chai, { expect } from 'chai'
 import { BigNumber } from "bignumber.js";
 import { toChecksumAddress } from "web3-utils";
 
-import ProtocolDataProviderArtifact from '@aave/protocol-v2/artifacts/contracts/misc/AaveProtocolDataProvider.sol/AaveProtocolDataProvider.json'
-import LendingPoolAddressProviderArtifact from '@aave/protocol-v2/artifacts/contracts/interfaces/ILendingPoolAddressesProvider.sol/ILendingPoolAddressesProvider.json'
-import LendingPoolArtifact from '@aave/protocol-v2/artifacts/contracts/interfaces/ILendingPool.sol/ILendingPool.json'
-
-import { AAVE_DATA_PROVIDER_ADDRESS, DAI, ETHEREUM_ADDRESS_LENGTH, LENDING_POOL_ADDRESS_PROVIDER_ADDRESS } from '../constants'
-import { getDAI, DAI_ADDRESS, ERC20ABI, DAI_DECIMALS } from './utils'
+import { DAI, ETHEREUM_ADDRESS_LENGTH, LENDING_POOL_ADDRESS_PROVIDER_ADDRESS } from '../constants'
 import { EthereumAddress, InterestRateMode } from "../types";
+
+import { getAaveProtocolDataProvider, getDAI, DAI_ADDRESS, ERC20ABI, DAI_DECIMALS } from './utils'
 
 chai.use(require('chai-bignumber')());
 
 const test = it
-
-const getAaveProtocolDataProvider = (signer: Signer): Contract => {
-    return new Contract(AAVE_DATA_PROVIDER_ADDRESS, new utils.Interface(ProtocolDataProviderArtifact.abi), signer)
-}
-
-const getLendingPoolAddressProvider = (signer: Signer): Contract => {
-    return new Contract(LENDING_POOL_ADDRESS_PROVIDER_ADDRESS, new utils.Interface(LendingPoolAddressProviderArtifact.abi), signer)
-}
-
-const getLendingPoolAt = (at: EthereumAddress, signer: Signer): Contract => {
-    return new Contract(at, new utils.Interface(LendingPoolArtifact.abi), signer)
-}
 
 describe("PersonalFundManager", function () {
     this.timeout(200000)
@@ -58,7 +43,7 @@ describe("PersonalFundManager", function () {
         const initializeReceipt = await personalFundManagerInstance.initialize(LENDING_POOL_ADDRESS_PROVIDER_ADDRESS, InterestRateMode.Variable);
         await initializeReceipt.wait()
 
-        // approve first
+        // approvals
         const daiContractInstance = new ethers.Contract(DAI_ADDRESS, ERC20ABI, userAccount);
         const approvalReceipt = await daiContractInstance.approve(personalFundManagerInstance.address, constants.MaxUint256)
         await approvalReceipt.wait()
@@ -90,11 +75,9 @@ describe("PersonalFundManager", function () {
         const amountToDeposit = 1000;
         const amountToDepositUsingAssetDecimals = utils.parseUnits(amountToDeposit.toString(), DAI_DECIMALS)
 
-
         const depositReceipt = await personalFundManagerInstance.deposit(DAI_ADDRESS, amountToDepositUsingAssetDecimals)
         await depositReceipt.wait()
         expect(depositReceipt).to.be.an('object')
-
         // TODO: assert events
     })
 
