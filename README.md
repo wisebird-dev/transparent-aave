@@ -24,15 +24,20 @@ ALCHEMY_KEY=<YOUR_ALCHEMY_KEY>
 ### Install
 
 ```
-> git clone <TODO>
+> git clone git@github.com:EdsonAlcala/transparent-aave.git
 
 > npm install
 
-> 
 ```
 
-### Command
+### Commands
+
+- compile
 
 - test
 
-- compile
+- test:ProxyAdmin
+
+- test:fundManager
+
+- test:FundManagerProxy
