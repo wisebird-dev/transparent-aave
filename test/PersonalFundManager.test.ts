@@ -2,15 +2,15 @@ import { ethers } from "hardhat";
 import { Signer, BigNumber as EthersBigNumber, Contract, utils, constants } from "ethers";
 import chai, { expect } from 'chai'
 import { BigNumber } from "bignumber.js";
-import { toChecksumAddress } from "web3-utils";
 
-import { DAI, ETHEREUM_ADDRESS_LENGTH } from '../constants'
-import { getDAI, DAI_ADDRESS, ERC20ABI, DAI_DECIMALS } from './utils'
-// const LendingPoolV2Artifact = require('@aave/protocol-v2/artifacts/contracts/protocol/lendingpool/LendingPool.sol/LendingPool.json');
 import ProtocolDataProviderArtifact from '@aave/protocol-v2/artifacts/contracts/misc/AaveProtocolDataProvider.sol/AaveProtocolDataProvider.json'
 import LendingPoolAddressProviderArtifact from '@aave/protocol-v2/artifacts/contracts/interfaces/ILendingPoolAddressesProvider.sol/ILendingPoolAddressesProvider.json'
 import LendingPoolArtifact from '@aave/protocol-v2/artifacts/contracts/interfaces/ILendingPool.sol/ILendingPool.json'
+
+import { DAI, ETHEREUM_ADDRESS_LENGTH } from '../constants'
+import { getDAI, DAI_ADDRESS, ERC20ABI, DAI_DECIMALS } from './utils'
 import { EthereumAddress } from "../types";
+import { toChecksumAddress } from "web3-utils";
 
 chai.use(require('chai-bignumber')());
 
@@ -43,9 +43,6 @@ const getLendingPoolAt = (at: EthereumAddress, signer: Signer): Contract => {
     return new Contract(at, new utils.Interface(LendingPoolArtifact.abi), signer)
 }
 
-const IMPLEMENTATION_LABEL = 'eip1967.proxy.implementation';
-const ADMIN_LABEL = 'eip1967.proxy.admin';
-
 describe("PersonalFundManager", function () {
     this.timeout(200000)
 
@@ -64,7 +61,9 @@ describe("PersonalFundManager", function () {
 
         // get DAI
         await getDAI(userAccount)
+    })
 
+    beforeEach(async () => {
         // deploy
         const PersonalFundManager = await ethers.getContractFactory("PersonalFundManager");
         personalFundManagerInstance = await PersonalFundManager.deploy();
@@ -74,11 +73,12 @@ describe("PersonalFundManager", function () {
         const initializeReceipt = await personalFundManagerInstance.initialize(LENDING_POOL_ADDRESS_PROVIDER_ADDRESS, InterestRateMode.Variable);
         await initializeReceipt.wait()
 
+        // approve first
+        const daiContractInstance = new ethers.Contract(DAI_ADDRESS, ERC20ABI, userAccount);
+        const approvalReceipt = await daiContractInstance.approve(personalFundManagerInstance.address, constants.MaxUint256)
+        await approvalReceipt.wait()
+
         protocolDataProvider = getAaveProtocolDataProvider(userAccount)
-    })
-
-    beforeEach(async () => {
-
     });
 
     test('preconditions: user should have DAI balance > 0', async () => {
@@ -88,6 +88,13 @@ describe("PersonalFundManager", function () {
         expect(new BigNumber(daiBalance.toString())).to.be.bignumber.greaterThan(1);
     })
 
+    test('preconditions: my current DAI Address is correct', async () => {
+        const reservesTokens = await protocolDataProvider.getAllReservesTokens();
+        const daiAddress = reservesTokens.find((token: { symbol: string }) => token.symbol === DAI)?.tokenAddress;
+
+        expect(toChecksumAddress(daiAddress)).to.equal(toChecksumAddress(DAI_ADDRESS))
+    })
+
     test("contract deployment", async () => {
         expect(personalFundManagerInstance).to.be.an('object');
         expect(personalFundManagerInstance.address).to.be.a('string')
@@ -95,49 +102,73 @@ describe("PersonalFundManager", function () {
     })
 
     test('deposit', async () => {
-        const reservesTokens = await protocolDataProvider.getAllReservesTokens();
-        const daiAddress = reservesTokens.find((token: { symbol: string }) => token.symbol === DAI)?.tokenAddress;
-        const assetAddress = daiAddress; // DAI_ADDRESS
         const amountToDeposit = 1000;
         const amountToDepositUsingAssetDecimals = utils.parseUnits(amountToDeposit.toString(), DAI_DECIMALS)
-        const daiContractInstance = new ethers.Contract(DAI_ADDRESS, ERC20ABI, userAccount);
 
-        // // transfer tokens to contracts
-        // const transferReceipt = await daiContractInstance.transfer(personalFundManagerInstance.address, amountToDepositUsingAssetDecimals)
-        // await transferReceipt.wait()
 
-        // approve first
-        const approvalReceipt = await daiContractInstance.approve(personalFundManagerInstance.address, constants.MaxUint256)
-        await approvalReceipt.wait()
-        expect(approvalReceipt).to.be.an('object')
-
-        // const lendingPoolAddressProvider = getLendingPoolAddressProvider(userAccount)
-        // const lendingPoolAddress = await lendingPoolAddressProvider.getLendingPool()
-        // console.log("Lending Pool Address", lendingPoolAddress)
-
-        // const approvalReceipt = await daiContractInstance.approve(lendingPoolAddress, constants.MaxUint256)
-        // console.log("approvalReceipt", approvalReceipt)
-
-        // const lendingPoolInstance = getLendingPoolAt(lendingPoolAddress, userAccount)
-        // const receipt = await lendingPoolInstance.deposit(assetAddress, 1000, userAddress, 0)
-        // console.log("Receipt", receipt)
-        // await receipt.wait()
-        // expect(receipt).to.be.an('object')
-
-        const depositReceipt = await personalFundManagerInstance.deposit(assetAddress, amountToDepositUsingAssetDecimals)
+        const depositReceipt = await personalFundManagerInstance.deposit(DAI_ADDRESS, amountToDepositUsingAssetDecimals)
         await depositReceipt.wait()
         expect(depositReceipt).to.be.an('object')
+
+        // TODO: assert events
     })
 
     test('borrow', async () => {
+        await makeDeposit(1000)
 
+        // TODO: try to see how to get interest rates and more data about the borrowing...
+        const amountToBorrow = 10;
+        const amountToBorrowUsingAssetDecimals = utils.parseUnits(amountToBorrow.toString(), DAI_DECIMALS)
+
+        const borrowReceipt = await personalFundManagerInstance.borrow(DAI_ADDRESS, amountToBorrowUsingAssetDecimals)
+        await borrowReceipt.wait()
+
+        expect(borrowReceipt).to.be.an('object')
+
+        // TODO: assert balances
     })
 
     test('withdraw', async () => {
+        await makeDeposit(1000)
 
+        const amountToWithdraw = 10;
+        const amountToWithdrawUsingAssetDecimals = utils.parseUnits(amountToWithdraw.toString(), DAI_DECIMALS)
+
+        const withdrawReceipt = await personalFundManagerInstance.withdraw(DAI_ADDRESS, amountToWithdrawUsingAssetDecimals)
+        await withdrawReceipt.wait()
+
+        expect(withdrawReceipt).to.be.an('object')
+
+        // TODO: assert balances
     })
 
     test('repay', async () => {
+        await makeDeposit(1000)
+        await makeBorrow(10)
 
+        const amountToRepay = 10;
+        const amountToRepayUsingAssetDecimals = utils.parseUnits(amountToRepay.toString(), DAI_DECIMALS)
+
+        const repayReceipt = await personalFundManagerInstance.repay(DAI_ADDRESS, amountToRepayUsingAssetDecimals)
+        await repayReceipt.wait()
+
+        expect(repayReceipt).to.be.an('object')
+
+        // TODO: assert balances
     })
+
+
+    const makeDeposit = async (amountToDeposit: number) => {
+        const amountToDepositUsingAssetDecimals = utils.parseUnits(amountToDeposit.toString(), DAI_DECIMALS)
+        const depositReceipt = await personalFundManagerInstance.deposit(DAI_ADDRESS, amountToDepositUsingAssetDecimals)
+        await depositReceipt.wait()
+    }
+
+    const makeBorrow = async (amountToBorrow: number) => {
+        const amountToBorrowUsingAssetDecimals = utils.parseUnits(amountToBorrow.toString(), DAI_DECIMALS)
+
+        const borrowReceipt = await personalFundManagerInstance.borrow(DAI_ADDRESS, amountToBorrowUsingAssetDecimals)
+        await borrowReceipt.wait()
+    }
+
 });

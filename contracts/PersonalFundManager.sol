@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
 
 import "hardhat/console.sol";
 
-import "./interfaces/ILendingPoolAddressesProvider.sol";
-import "./interfaces/ILendingPool.sol";
-import "./interfaces/IERC20.sol";
-import "./dependencies/openzepellin/Initializable.sol";
+import { ILendingPoolAddressesProvider } from "./interfaces/ILendingPoolAddressesProvider.sol";
+import { ILendingPool } from "./interfaces/ILendingPool.sol";
+import { IERC20 } from "./interfaces/IERC20.sol";
+import { Initializable } from "./dependencies/openzepellin/Initializable.sol";
+import { DataTypes } from "./interfaces/DataTypes.sol";
 
 contract PersonalFundManager is Initializable {
 	uint256 interestRateMode;
@@ -27,18 +29,25 @@ contract PersonalFundManager is Initializable {
 		lendingPool.deposit(_asset, _amount, address(this), REFERRAL_CODE);
 	}
 
-	function borrow(address asset, uint256 amount) public {
+	function borrow(address _asset, uint256 _amount) public {
 		ILendingPool lendingPool = ILendingPool(ADDRESSES_PROVIDER.getLendingPool());
-		lendingPool.borrow(asset, amount, interestRateMode, REFERRAL_CODE, address(this));
+		lendingPool.borrow(_asset, _amount, interestRateMode, REFERRAL_CODE, address(this));
 	}
 
-	function withdraw(address asset, uint256 amount) public {
+	function withdraw(address _asset, uint256 _amount) public {
 		ILendingPool lendingPool = ILendingPool(ADDRESSES_PROVIDER.getLendingPool());
-		lendingPool.withdraw(asset, amount, address(this));
+		lendingPool.withdraw(_asset, _amount, address(this));
 	}
 
-	function repay(address asset, uint256 amount) public {
+	struct ReserveData {
+		address aTokenAddress;
+	}
+
+	function repay(address _asset, uint256 _amount) public {
 		ILendingPool lendingPool = ILendingPool(ADDRESSES_PROVIDER.getLendingPool());
-		lendingPool.repay(asset, amount, interestRateMode, address(this));
+		DataTypes.ReserveData memory reserve = lendingPool.getReserveData(_asset);
+		IERC20(reserve.aTokenAddress).approve(ADDRESSES_PROVIDER.getLendingPool(), _amount);
+		IERC20(_asset).approve(ADDRESSES_PROVIDER.getLendingPool(), _amount);
+		lendingPool.repay(_asset, _amount, interestRateMode, address(this));
 	}
 }

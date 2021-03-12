@@ -1,5 +1,5 @@
 {
-  "name": "aave-test",
+  "name": "transparent-aave-integration",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
@@ -20,10 +20,13 @@
     "typescript": "^4.2.3"
   },
   "scripts": {
-    "compile": "hardhat compile",
-    "test": "hardhat test"
+    "compile": "hardhat compile --show-stack-traces",
+    "test": "hardhat test",
+    "test:proxyAdmin": "hardhat test test/ProxyAdmin.test.ts",
+    "test:fundManager": "hardhat test test/PersonalFundManager.test.ts"
   },
   "dependencies": {
+    "@aave/protocol-v2": "^1.0.1",
     "@uniswap/sdk": "^3.0.3",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "abort-controller": "^3.0.0",
