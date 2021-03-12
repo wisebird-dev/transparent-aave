@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import { Signer, BigNumber as EthersBigNumber, Contract, utils, constants } from "ethers";
+import { Signer, Contract } from "ethers";
 import chai, { expect } from 'chai'
 
 import { EthereumAddress } from '../types'
@@ -7,9 +7,6 @@ import { EthereumAddress } from '../types'
 chai.use(require('chai-bignumber')());
 
 const test = it
-
-const IMPLEMENTATION_LABEL = 'eip1967.proxy.implementation';
-const ADMIN_LABEL = 'eip1967.proxy.admin';
 
 describe("ProxyAdmin tests", function () {
     let accounts: Signer[];

@@ -10,7 +10,7 @@
     "include": [
         "./scripts",
         "./test",
-        "./chai-bignumber.d.ts",
+        "./chai-bignumber.d.ts"
     ],
     "files": [
         "./hardhat.config.ts"
