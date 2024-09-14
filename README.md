@@ -24,7 +24,7 @@ ALCHEMY_KEY=<YOUR_ALCHEMY_KEY>
 ### Install
 
 ```
-> git clone git@github.com:EdsonAlcala/transparent-aave.git
+> git clone git@github.com:wisebird-dev/transparent-aave.git
 
 > npm install
 
